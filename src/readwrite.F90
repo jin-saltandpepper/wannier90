@@ -204,6 +204,8 @@ contains
     integer :: nk
     logical :: found
 
+    found = .false.
+
     call w90_readwrite_get_range_vector(settings, 'distk', found, nk, .true., error, comm)
     if (allocated(error)) return
 
@@ -2422,7 +2424,7 @@ contains
     type(w90_comm_type), intent(in) :: comm
     character(*), intent(in)  :: keyword
     !! Keyword to examine
-    logical, intent(out) :: found
+    logical, intent(inout) :: found
     !! Is keyword present
     integer, intent(in)  :: length
     !! Length of vecotr to read
@@ -2526,6 +2528,8 @@ contains
 
     integer           :: kl, in, loop, pos
     character(len=maxlen) :: dummy
+
+    found = .false.
 
     ! get_vector_length only is meaningful for human text in input file
     ! not suitable for data passed via library interface (data in settings%entries)
