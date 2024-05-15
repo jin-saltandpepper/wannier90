@@ -960,6 +960,7 @@ contains
 
       ! Note: we assume that eigvals are ordered from the bottom up
       imin = 0
+      imax = 0
       do i = 1, num_bands
         if (imin .eq. 0) then
           if ((eigval_opt(i, nkp) .ge. dis_manifold%win_min) .and. &
@@ -1980,14 +1981,14 @@ contains
 
     complex(kind=dp), allocatable :: camp_loc(:, :, :)
     complex(kind=dp), allocatable :: u_matrix_opt_loc(:, :, :)
-    complex(kind=dp), allocatable :: ceamp(:, :, :)
+    complex(kind=dp), allocatable :: ceamp(:, :, :) ! (alloc on root rank only)
     complex(kind=dp), allocatable :: camp(:, :, :)
     complex(kind=dp), allocatable :: czmat_in(:, :, :)
     complex(kind=dp), allocatable :: czmat_out(:, :, :)
     ! the z-matrices are now stored in local arrays
     complex(kind=dp), allocatable :: czmat_in_loc(:, :, :)
     complex(kind=dp), allocatable :: czmat_out_loc(:, :, :)
-    complex(kind=dp), allocatable :: cham(:, :, :)
+    complex(kind=dp), allocatable :: cham(:, :, :) ! (alloc on root rank only)
 
     complex(kind=dp), allocatable :: cap(:)
     complex(kind=dp), allocatable :: cwb(:, :), cww(:, :), cbw(:, :)
@@ -3220,6 +3221,7 @@ contains
       '+---------------------------------------------------------------------+<-- DIS'
 
     dis_converged = .false.
+    womegai = 0 ! unitialised if zero iterations sought
 
     ! ------------------
     ! BIG ITERATION LOOP

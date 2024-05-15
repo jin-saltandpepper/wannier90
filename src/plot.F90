@@ -393,8 +393,8 @@ contains
     logical :: kpath_print_first_point(bands_num_spec_points/2)
 
     character(len=20), allocatable :: glabel(:)
-    character(len=10), allocatable :: xlabel(:)
-    character(len=10), allocatable :: ctemp(:)
+    character(len=20), allocatable :: xlabel(:)
+    character(len=20), allocatable :: ctemp(:)
 
     !
     if (print_output%timing_level > 1) then
@@ -1740,8 +1740,6 @@ contains
                 end do
               end do
             end do
-            wmod = wmod/sqrt(real(wmod)**2 + aimag(wmod)**2)
-            wann_func(:, :, :, loop_w) = wann_func(:, :, :, loop_w)/wmod
           end do
         endif
       endif
