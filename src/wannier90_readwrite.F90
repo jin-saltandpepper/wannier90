@@ -1506,8 +1506,10 @@ contains
 
     implicit none
 
+    ! arguments
     integer, intent(in) :: num_wann
     integer, intent(inout) :: num_proj
+    integer, intent(in) :: stdout
     logical, intent(in) :: gamma_only
     logical, intent(in) :: spinors
     logical, intent(in) :: use_bloch_phases, guiding_centres
@@ -1521,13 +1523,15 @@ contains
     type(w90_comm_type), intent(in) :: comm
     type(w90_error_type), allocatable, intent(out) :: error
 
-    integer, intent(in) :: stdout
+    ! local variables
     integer :: i, j, i_temp, loop, ierr
     logical :: found
     ! projections selection
     integer :: num_select_projections
     integer, allocatable :: select_projections(:)
     integer :: imap
+
+    lhasproj = .false.
 
     ! Projections
     call w90_readwrite_get_keyword(settings, 'auto_projections', found, error, comm, &
@@ -1566,12 +1570,16 @@ contains
       call w90_readwrite_get_projections(settings, num_proj, atom_data, num_wann, proj_input, &
                                          recip_lattice, .true., spinors, bohr, stdout, error, comm)
       ! count number of projections first
-      !write(*,*)"Projections found: ",num_proj
-      call w90_readwrite_get_projections(settings, num_proj, atom_data, num_wann, proj_input, &
-                                         recip_lattice, .false., spinors, bohr, stdout, error, comm)
-      !do ip = 1, num_proj
-      !  write(*,*)"site,l,m: ",proj_input(ip)%site,proj_input(ip)%l,proj_input(ip)%m
-      !enddo
+      !   call w90_readwrite_get_projections(settings, num_proj, atom_data, num_wann, proj_input, &
+      !                                      recip_lattice, .false., spinors, bohr, stdout, error, comm)
+      !   block
+      !   integer :: ip
+      !   do ip = 1, num_proj
+      !     write(*,*)"site,l,m,s: ",proj_input(ip)%site,proj_input(ip)%l,proj_input(ip)%m, proj_input(ip)%s
+      !   enddo
+      !   end block
+      lhasproj = .true.
+      !   write(*,*)"Projections found: ",num_proj,allocated(proj_input),shape(proj_input),lhasproj
     endif
 
     num_select_projections = num_proj !num proj is the size of proj_input
@@ -1656,7 +1664,14 @@ contains
         endif
         proj(imap) = proj_input(loop)
       enddo
-    endif
+
+      block
+        integer :: ip
+        do ip = 1, num_proj
+          write (*, *) "(END) site,l,m,s: ", proj(ip)%site, proj(ip)%l, proj(ip)%m, proj(ip)%s
+        enddo
+      end block
+    endif !lhasproj
 
   end subroutine w90_wannier90_readwrite_read_projections
 

@@ -369,7 +369,7 @@ contains
     if (found) then
       w90_system%spinors = ltmp
     else
-      w90_system%spinors = .false. ! specify a default behaviour
+      w90_system%spinors = .false.
     endif
     ! We need to know if the bands are double degenerate due to spin, e.g. when
     ! calculating the DOS
@@ -848,14 +848,35 @@ contains
 
     integer :: i_temp, i_temp2
     logical :: found, found2, lunits
+    character(len=maxlen), allocatable :: atoms_label_tmp(:)
+    real(kind=dp), allocatable :: atoms_pos_cart_tmp(:, :)
 
-    if (allocated(settings%entries)) return ! don't attempt this read in library mode
+    if (allocated(settings%entries)) then
+      call w90_readwrite_get_vector_length(settings, 'atoms_frac', found, i_temp, error, comm)
+      atom_data%num_atoms = i_temp
+      call w90_readwrite_get_vector_length(settings, 'symbols', found, i_temp, error, comm)
+      if (atom_data%num_atoms /= i_temp) write (*, *) 'xpos,symbols size mismatch', atom_data%num_atoms, i_temp
+      allocate (atoms_label_tmp(i_temp))
+      allocate (atoms_pos_cart_tmp(3, i_temp))
+      call w90_readwrite_get_keyword_vector(settings, 'atoms_frac', found, i_temp, error, comm, r2_value=atoms_pos_cart_tmp)
+      call w90_readwrite_get_keyword_vector(settings, 'symbols', found, i_temp, error, comm, c2_value=atoms_label_tmp)
+      call w90_readwrite_lib_set_atoms(atom_data, atoms_label_tmp, atoms_pos_cart_tmp, real_lattice, error, comm)
+      deallocate (atoms_label_tmp)
+      deallocate (atoms_pos_cart_tmp)
+      return
+    endif
+
+    i_temp = 0
+    i_temp2 = 0
+    found = .false.
+    found2 = .false.
 
     ! Atoms
     call w90_readwrite_get_block_length(settings, 'atoms_frac', found, i_temp, error, comm)
     if (allocated(error)) return
     call w90_readwrite_get_block_length(settings, 'atoms_cart', found2, i_temp2, error, comm, lunits)
     if (allocated(error)) return
+
     if (found .and. found2) then
       call set_error_input(error, 'Error: Cannot specify both atoms_frac and atoms_cart', comm)
       return
@@ -1345,9 +1366,7 @@ contains
     !! associated to a sc_phase_conv integer value.
     integer, intent(in) :: sc_phase_conv
     !! The integer index for which we want to get the string
-    character(len=80)   :: w90_readwrite_get_convention_type
-
-    !character(len=4)   :: orderstr
+    character(len=80) :: w90_readwrite_get_convention_type
 
     if (sc_phase_conv .eq. 1) then
       w90_readwrite_get_convention_type = "Tight-binding convention"
@@ -2341,7 +2360,8 @@ contains
 
   !================================================!
   subroutine w90_readwrite_get_keyword_vector(settings, keyword, found, length, error, comm, &
-                                              c_value, l_value, i_value, r_value)
+                                              c_value, l_value, i_value, r_value, r2_value, &
+                                              c2_value)
     !================================================!
     !
     !! Finds the values of the required keyword vector
@@ -2368,6 +2388,10 @@ contains
     !! Keyword data
     real(kind=dp), optional, intent(inout) :: r_value(length)
     !! Keyword data
+    real(kind=dp), allocatable, optional, intent(inout) :: r2_value(:, :)
+    !! Keyword data
+    character(len=*), allocatable, optional, intent(inout) :: c2_value(:)
+    !! Keyword data
     type(settings_type), intent(inout) :: settings
 
     integer           :: kl, in, loop, i
@@ -2390,6 +2414,10 @@ contains
             i_value = settings%entries(loop)%i1d
           else if (present(r_value)) then
             r_value = settings%entries(loop)%r1d
+          else if (present(r2_value)) then
+            r2_value = settings%entries(loop)%r2d
+          else if (present(c2_value)) then
+            c2_value = settings%entries(loop)%c2d
           else
             call set_error_fatal(error, 'Error: vector sought, but no variable provided to assign to. (readwrite.F90)', comm)
             return
@@ -2486,8 +2514,12 @@ contains
             length = size(settings%entries(loop)%i1d)
           else if (allocated(settings%entries(loop)%r1d)) then
             length = size(settings%entries(loop)%r1d)
+          else if (allocated(settings%entries(loop)%r2d)) then
+            length = size(settings%entries(loop)%r2d, 1)
+          else if (allocated(settings%entries(loop)%c2d)) then
+            length = size(settings%entries(loop)%c2d, 1)
           else
-            call set_error_input(error, 'lib array not i or r', comm)
+            call set_error_input(error, 'lib array not i or r, r2d or c2d', comm)
           endif
           found = .true.
         end if
@@ -2736,11 +2768,16 @@ contains
     !! Have we found a unit specification
     type(settings_type), intent(inout) :: settings
 
-    integer           :: i, in, ins, ine, loop, line_e, line_s
-    logical           :: found_e, found_s
+    integer :: i, in, ins, ine, loop, line_e, line_s
+    logical :: found_e, found_s
     character(len=maxlen) :: end_st, start_st, dummy
-    character(len=2)  :: atsym
-    real(kind=dp)     :: atpos(3)
+    character(len=2) :: atsym
+    real(kind=dp) :: atpos(3)
+
+    found = .false.
+    rows = 0
+    found_s = .false.
+    found_e = .false.
 
     ! get_block_length only is meaningful for human text in input file
     ! not suitable for data passed via library interface (data in settings%entries)
@@ -2752,12 +2789,7 @@ contains
     !  return
     !endif
 
-    found = .false.
     if (allocated(settings%entries)) return ! don't try to do this in library mode (i.e. when not reading win file)
-
-    rows = 0
-    found_s = .false.
-    found_e = .false.
 
     start_st = 'begin '//trim(keyword)
     end_st = 'end '//trim(keyword)
@@ -3042,7 +3074,7 @@ contains
     type(atom_data_type), intent(inout) :: atom_data
     type(w90_error_type), allocatable, intent(out) :: error
     type(w90_comm_type), intent(in) :: comm
-    character(len=*), intent(in) :: atoms_label_tmp(atom_data%num_atoms)
+    character(len=*), intent(in) :: atoms_label_tmp(:)
     !! Atom labels
     real(kind=dp), intent(in) :: atoms_pos_cart_tmp(3, atom_data%num_atoms)
     !! Atom positions
@@ -3112,6 +3144,7 @@ contains
         if (trim(atom_data%label(loop)) == trim(atoms_label_tmp(loop2))) then
           counter = counter + 1
           !atom_data%pos_frac(:, counter, loop) = atoms_pos_frac_tmp(:, loop2)
+          write (*, *) atoms_pos_frac_tmp(:, loop2)
           atom_data%pos_cart(:, counter, loop) = atoms_pos_cart_tmp(:, loop2)
         end if
       end do
@@ -3173,17 +3206,6 @@ contains
       return
     endif
 
-    if (allocated(settings%entries)) then ! shortcut for library case
-      if (lcount) then
-        call w90_readwrite_get_vector_length(settings, keyword, found, length, error, comm)
-        return
-      else
-        call w90_readwrite_get_keyword_vector(settings, keyword, found, length, error, comm, &
-                                              i_value=i_value)
-        return
-      endif
-    endif ! end library branch
-
     kl = len_trim(keyword)
 
     found = .false.
@@ -3205,6 +3227,32 @@ contains
         dummy = adjustl(dummy)
       end if
     end do
+
+    if (allocated(settings%entries)) then ! shortcut for library case
+      do loop = 1, settings%num_entries  ! this means the first occurance of the variable in settings is used
+        if (settings%entries(loop)%keyword == trim(keyword)) then
+          found = .true.
+
+          write (*, *) "test: ", keyword, allocated(settings%entries(loop)%i1d)
+
+          if (allocated(settings%entries(loop)%i1d)) then
+            if (lcount) then
+              call w90_readwrite_get_vector_length(settings, keyword, found, length, error, comm)
+              write (*, *) length
+              return
+            else
+              call w90_readwrite_get_keyword_vector(settings, keyword, found, length, error, comm, &
+                                                    i_value=i_value)
+              return
+            endif
+          else
+            dummy = settings%entries(loop)%txtdata
+            dummy = adjustl(dummy)
+            write (*, *) dummy
+          endif
+        endif
+      enddo
+    endif
 
     if (.not. found) return
 
@@ -3542,13 +3590,12 @@ contains
     elseif (allocated(settings%entries)) then ! reading from setopt
       do loop = 1, settings%num_entries  ! this means the first occurance of the variable in settings is used
         if (settings%entries(loop)%keyword == 'projections') then
-          counter = counter + 1
           if (settings%entries(loop)%txtdata == 'bohr') lconvert = .true.
           if (settings%entries(loop)%txtdata == 'random') lrandom = .true.
         endif
       enddo
       line_s = 0
-      line_e = settings%num_entries + 1
+      line_e = settings%num_entries
     endif ! reading from input file or entries
 
     counter = 0
@@ -3571,10 +3618,16 @@ contains
         ! Strip input line of all spaces
         if (allocated(settings%entries)) then
           if (settings%entries(line)%keyword /= 'projections') cycle
+          !if (allocated(settings%entries(line)%txtdata)) then
           dummy = utility_strip(settings%entries(line)%txtdata)
+          !else
+          !  write(*,*)"using c2d"
+          !  dummy = utility_strip(settings%entries(line)%c2d(1))
+          !endif
         else
           dummy = utility_strip(settings%in_data(line))
         endif
+        if (len(trim(dummy)) == 0) cycle
         dummy = adjustl(dummy)
         pos1 = index(dummy, ':')
         if (pos1 == 0) then
