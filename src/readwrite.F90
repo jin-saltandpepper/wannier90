@@ -855,7 +855,8 @@ contains
       call w90_readwrite_get_vector_length(settings, 'atoms_frac', found, i_temp, error, comm)
       atom_data%num_atoms = i_temp
       call w90_readwrite_get_vector_length(settings, 'symbols', found, i_temp, error, comm)
-      if (atom_data%num_atoms /= i_temp) write (*, *) 'xpos,symbols size mismatch', atom_data%num_atoms, i_temp
+      !if (atom_data%num_atoms /= i_temp) write (*, *) 'xpos,symbols size mismatch', atom_data%num_atoms, i_temp
+      ! this mismatch can happen if people are not careful
       allocate (atoms_label_tmp(i_temp))
       allocate (atoms_pos_cart_tmp(3, i_temp))
       call w90_readwrite_get_keyword_vector(settings, 'atoms_frac', found, i_temp, error, comm, r2_value=atoms_pos_cart_tmp)
@@ -3085,6 +3086,7 @@ contains
     integer :: loop2, max_sites, ierr, ic, loop, counter
     character(len=maxlen) :: ctemp(atom_data%num_atoms)
     character(len=maxlen) :: tmp_string
+    real(kind=dp)  :: atoms_pos_cart_tmp2(3, atom_data%num_atoms)
 
     call utility_inverse_mat(real_lattice, inv_lattice)
     do loop = 1, atom_data%num_atoms
@@ -3143,8 +3145,6 @@ contains
       do loop2 = 1, atom_data%num_atoms
         if (trim(atom_data%label(loop)) == trim(atoms_label_tmp(loop2))) then
           counter = counter + 1
-          !atom_data%pos_frac(:, counter, loop) = atoms_pos_frac_tmp(:, loop2)
-          write (*, *) atoms_pos_frac_tmp(:, loop2)
           atom_data%pos_cart(:, counter, loop) = atoms_pos_cart_tmp(:, loop2)
         end if
       end do
@@ -3232,13 +3232,9 @@ contains
       do loop = 1, settings%num_entries  ! this means the first occurance of the variable in settings is used
         if (settings%entries(loop)%keyword == trim(keyword)) then
           found = .true.
-
-          write (*, *) "test: ", keyword, allocated(settings%entries(loop)%i1d)
-
           if (allocated(settings%entries(loop)%i1d)) then
             if (lcount) then
               call w90_readwrite_get_vector_length(settings, keyword, found, length, error, comm)
-              write (*, *) length
               return
             else
               call w90_readwrite_get_keyword_vector(settings, keyword, found, length, error, comm, &
@@ -3248,7 +3244,6 @@ contains
           else
             dummy = settings%entries(loop)%txtdata
             dummy = adjustl(dummy)
-            write (*, *) dummy
           endif
         endif
       enddo
