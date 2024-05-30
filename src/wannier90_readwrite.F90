@@ -122,6 +122,9 @@ contains
     call w90_readwrite_read_mp_grid(settings, .false., mp_grid, num_kpts, error, comm)
     if (allocated(error)) return
 
+    call w90_readwrite_read_distk(settings, distk, num_kpts, error, comm)
+    if (allocated(error)) return
+
     call w90_readwrite_read_kmesh_data(settings, kmesh_input, error, comm)
     if (allocated(error)) return
 
@@ -148,8 +151,6 @@ contains
       enddo
     endif
     if (allocated(error)) return
-
-    call w90_readwrite_read_distk(settings, distk, num_kpts, error, comm)
 
   end subroutine w90_wannier90_readwrite_read_special
 
@@ -1664,13 +1665,6 @@ contains
         endif
         proj(imap) = proj_input(loop)
       enddo
-
-      block
-        integer :: ip
-        do ip = 1, num_proj
-          write (*, *) "(END) site,l,m,s: ", proj(ip)%site, proj(ip)%l, proj(ip)%m, proj(ip)%s
-        enddo
-      end block
     endif !lhasproj
 
   end subroutine w90_wannier90_readwrite_read_projections
