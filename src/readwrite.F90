@@ -66,6 +66,7 @@ module w90_readwrite
   public :: w90_readwrite_read_mp_grid
   public :: w90_readwrite_read_num_bands
   public :: w90_readwrite_read_num_wann
+  public :: w90_readwrite_read_total_bands
   public :: w90_readwrite_read_system
   public :: w90_readwrite_read_units
   public :: w90_readwrite_read_verbosity
@@ -189,6 +190,31 @@ contains
       return
     endif
   end subroutine w90_readwrite_read_num_wann
+
+  ! fixme
+  subroutine w90_readwrite_read_total_bands(settings, num_wann, error, comm)
+    use w90_error, only: w90_error_type, set_error_input
+    implicit none
+    integer, intent(inout) :: num_wann
+    type(w90_error_type), allocatable, intent(out) :: error
+    type(w90_comm_type), intent(in) :: comm
+    type(settings_type), intent(inout) :: settings
+
+    logical :: found
+    num_wann = 0
+
+    call w90_readwrite_get_keyword(settings, 'total_bands', found, error, comm, i_value=num_wann)
+    if (allocated(error)) return
+
+    !if (.not. found) then
+    !  call set_error_input(error, 'Error: You must specify num_wann', comm)
+    !  return
+    !endif
+    if (num_wann <= 0) then
+      call set_error_input(error, 'Error: num_wann must be greater than zero', comm)
+      return
+    endif
+  end subroutine w90_readwrite_read_total_bands
 
   subroutine w90_readwrite_read_distk(settings, distk, nkin, error, comm)
     ! read distribution of kpoints
@@ -3583,7 +3609,7 @@ contains
       endif
 
     elseif (allocated(settings%entries)) then ! reading from setopt
-      do loop = 1, settings%num_entries  ! this means the first occurance of the variable in settings is used
+      do loop = 1, settings%num_entries
         if (settings%entries(loop)%keyword == 'projections') then
           if (settings%entries(loop)%txtdata == 'bohr') lconvert = .true.
           if (settings%entries(loop)%txtdata == 'random') lrandom = .true.
