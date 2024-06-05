@@ -342,7 +342,7 @@ contains
     if (allocated(error)) return
 
     if (.not. (w90_calculation%transport .and. tran%read_ht)) then
-      call w90_readwrite_read_dis_manifold(settings, .true., dis_manifold, error, comm)
+      call w90_readwrite_read_dis_manifold(settings, dis_manifold, error, comm)
       if (allocated(error)) return
 
       call w90_wannier90_readwrite_read_disentangle(settings, dis_control, dis_spheres, num_bands, &

@@ -224,7 +224,8 @@ contains
     dis_manifold%win_max = 0.0_dp
     if (eig_found) dis_manifold%win_min = minval(eigval)
     if (eig_found) dis_manifold%win_max = maxval(eigval)
-    call w90_readwrite_read_dis_manifold(settings, eig_found, dis_manifold, error, comm)
+    call w90_readwrite_read_dis_manifold(settings, dis_manifold, error, comm)
+
     if (allocated(error)) return
     call w90_wannier90_readwrite_read_geninterp(settings, pw90_geninterp, error, comm)
     if (allocated(error)) return
