@@ -1110,7 +1110,11 @@ contains
     call w90_readwrite_get_range_vector(settings, 'shell_list', found, lx, .true., error, comm)
     if (allocated(lxa)) deallocate (lxa); allocate (lxa(lx))
     call w90_readwrite_get_range_vector(settings, 'shell_list', found, lx, .false., error, comm, lxa)
-    call w90_readwrite_read_exclude_bands(settings, lxa, lx, error, comm)
+    call w90_readwrite_get_range_vector(settings, 'exclude_bands', found, lx, .true., error, comm)
+    if (allocated(lxa)) deallocate (lxa); allocate (lxa(lx))
+    call w90_readwrite_get_range_vector(settings, 'exclude_bands', found, lx, .false., error, comm, lxa)
+
+    !call w90_readwrite_read_exclude_bands(settings, lxa, lx, error, comm)
     ! ends list of wannier.x keywords
 
     ! keywords for postw90.x
