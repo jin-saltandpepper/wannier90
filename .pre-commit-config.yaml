@@ -14,15 +14,19 @@ repos:
       )$
   - id: trailing-whitespace
     files: (?x)^(
+        Makefile|
         config/make[.]inc[.\w]*|
-        tutorials/tutorial\d\d[-]?\w*/.+win
+        tutorials/tutorial\d\d[-]?\w*/.+win|
+        src/.+
       )$
   - id: end-of-file-fixer
     files: (?x)^(
+        Makefile|
         config/make[.]inc[.\w]*|
-        tutorials/tutorial\d\d[-]?\w*/.+win
+        tutorials/tutorial\d\d[-]?\w*/.+win|
+        src/.+
       )$
-- repo: https://github.com/pseewald/fprettify
+- repo: https://github.com/fortran-lang/fprettify
   rev: v0.3.3
   hooks:
   - id: fprettify
